@@ -1,13 +1,8 @@
 #include "syscfg/syscfg.h"
 #include "os/os.h"
-#include "console/console.h"
 #include "hal/hal_timer.h"
+
 #include "bosch_bsec/bosch_bsec.h"
-
-#if MYNEWT_VAL(BOSCH_BSEC_SAVE_STATE)
-#include "fs/fs.h"
-#endif
-
 #include "bosch_bsec/bsec_integration.h"
 
 #if MYNEWT_VAL(BOSCH_BSEC_CONFIG) == 0
@@ -30,11 +25,15 @@
     #error Must specify a valid BSEC config (see BOSCH_BSEC_CONFIG in syscfg)
 #endif
 
+#if MYNEWT_VAL(BOSCH_BSEC_SAVE_STATE)
+#include "fs/fs.h"
+#endif
+
 /******************************************
- * BSEC definitions
+ * BSEC task definitions
  * ***************************************/
-#define BSEC_TASK_PRI   (110)
-#define BSEC_TASK_STACK_SIZE  (1024)
+#define BSEC_TASK_PRI   MYNEWT_VAL(BOSCH_BSEC_TASK_PRIORITY)
+#define BSEC_TASK_STACK_SIZE  MYNEWT_VAL(BOSCH_BSEC_TASK_STACK_SIZE)
 static struct os_task bsec_task;
 OS_TASK_STACK_DEFINE(bsec_task_stack, BSEC_TASK_STACK_SIZE);
 
@@ -58,9 +57,6 @@ static void state_save(const uint8_t *state_buffer, uint32_t length)
     if (rc == 0) {
         fs_write(file, state_buffer, length);
         fs_close(file);
-        console_printf("BSEC state saved: %lu\n", length);
-    } else {
-        console_printf("ERROR: Failed to save BSEC state file: %i\n", rc);
     }
 #endif
 }
@@ -76,13 +72,6 @@ static uint32_t state_load(uint8_t *state_buffer, uint32_t n_buffer)
     if (rc == 0) {
         fs_read(file, n_buffer, state_buffer, &bytes_read);
         fs_close(file);
-
-        if (bytes_read != n_buffer) {
-            /* There was an error reading the state data */
-            bytes_read = 0;
-        } else {
-            console_printf("BSEC State loaded: %lu\n", bytes_read);
-        }
     }
 #endif
     return bytes_read;
@@ -118,15 +107,12 @@ static void bsec_task_func(void *arg)
 #endif
 
     bme680 = sensor_mgr_find_next_bydevname(MYNEWT_VAL(BOSCH_BSEC_SENSOR_DEV), NULL);
-    if (!bme680) {
-        console_printf("Unable to retreive sensor device\n");
-        assert(0);
-    }
+    assert(bme680);
     
-    rc = bsec_iot_init(BSEC_SAMPLE_RATE_LP, 0.0f, bme680, delay_ms, state_load, config_load);
+    rc = bsec_iot_init(BSEC_SAMPLE_RATE_LP, MYNEWT_VAL(BOSCH_BSEC_TEMPERATURE_OFFSET), bme680, delay_ms, state_load, config_load);
     assert(rc == 0);
     
-    bsec_iot_loop(delay_ms, get_timestamp_us, output_ready, state_save, 10000);
+    bsec_iot_loop(delay_ms, get_timestamp_us, output_ready, state_save, MYNEWT_VAL(BOSCH_BSEC_SAVE_STATE_INTERVAL));
 }
 
 void bosch_bsec_output_cb(output_ready_fct output_ready)

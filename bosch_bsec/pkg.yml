@@ -31,6 +31,7 @@ pkg.deps:
     - "@apache-mynewt-core/hw/sensor"
     - "@apache-mynewt-core/hw/drivers/sensors/bme680"
     - "@apache-mynewt-core/hw/sensor/creator"
+    - "@apache-mynewt-core/fs/fs"
     
 pkg.lflags:
     - "-lm"
