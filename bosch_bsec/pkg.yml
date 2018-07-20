@@ -17,7 +17,7 @@
 # under the License.
 #
 
-pkg.name: "libs/bosch_bsec"
+pkg.name: "bosch_bsec"
 pkg.description: "Bosch BSEC Sensor Fusion Library Mynewt Package"
 pkg.author: "Amr Bekhit"
 pkg.homepage: "https://github.com/amrbekhit/mynewt-bosch-bsec"
